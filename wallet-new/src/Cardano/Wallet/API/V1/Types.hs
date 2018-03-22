@@ -51,6 +51,8 @@ module Cardano.Wallet.API.V1.Types (
   , TransactionType (..)
   , TransactionDirection (..)
   , EstimatedFees (..)
+  , TransactionSignature (..)
+  , SignedTransaction (..)
   -- * Updates
   , WalletSoftwareUpdate (..)
   -- * Settings
@@ -861,6 +863,43 @@ instance Arbitrary Transaction where
                           <*> arbitrary
                           <*> arbitrary
                           <*> arbitrary
+
+-- | Signature of transaction. We are use it in case of
+-- externally signed transaction (mobile client or hardware wallet).
+newtype TransactionSignature = TransactionSignature Text
+  deriving (Show, Ord, Eq, Generic)
+
+deriveJSON Serokell.defaultOptions ''TransactionSignature
+
+instance ToSchema TransactionSignature where
+  declareNamedSchema =
+    genericSchemaDroppingPrefix "txSig" (\(--^) props -> props
+      & ("signature" --^ "Raw signature of new transaction.")
+    )
+
+instance Arbitrary TransactionSignature where
+  arbitrary = TransactionSignature <$> arbitrary
+
+-- | A 'Wallet''s 'SignedTransaction'. It is assumed
+-- that this transaction was signed on the client-side
+-- (mobile client or hardware wallet).
+data SignedTransaction = SignedTransaction
+  { stxTransaction :: !Transaction
+  , stxSignature   :: !TransactionSignature
+  } deriving (Show, Ord, Eq, Generic)
+
+deriveJSON Serokell.defaultOptions ''SignedTransaction
+
+instance ToSchema SignedTransaction where
+  declareNamedSchema =
+    genericSchemaDroppingPrefix "stx" (\(--^) props -> props
+      & ("transaction" --^ "New transaction that wasn't published yet.")
+      & ("signature"   --^ "Signature of this transaction.")
+    )
+
+instance Arbitrary SignedTransaction where
+  arbitrary = SignedTransaction <$> arbitrary
+                                <*> arbitrary
 
 -- | A type representing an upcoming wallet update.
 data WalletSoftwareUpdate = WalletSoftwareUpdate
